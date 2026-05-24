@@ -1,0 +1,19 @@
+{
+  "name": "@orbit/contracts-notify",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "protos"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nestjs/microservices": "^10.3.0",
+    "rxjs": "^7.8.1"
+  }
+}

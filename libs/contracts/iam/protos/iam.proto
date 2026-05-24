@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package iam;
+
+// IamService — private gRPC surface for the iam app.
+// Consumed internally by other services (e.g. notify) to resolve user info.
+service IamService {
+  rpc GetUser (GetUserRequest) returns (User);
+  rpc CreateUser (CreateUserRequest) returns (User);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string displayName = 2;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string displayName = 3;
+  string createdAt = 4; // ISO-8601 timestamp
+}

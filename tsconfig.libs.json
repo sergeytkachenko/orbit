@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "include": [],
+  "references": [
+    { "path": "libs/common/tsconfig.lib.json" },
+    { "path": "libs/transport-grpc/tsconfig.lib.json" },
+    { "path": "libs/service-registry/tsconfig.lib.json" },
+    { "path": "libs/contracts/iam/tsconfig.lib.json" },
+    { "path": "libs/contracts/notify/tsconfig.lib.json" }
+  ]
+}

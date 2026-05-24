@@ -1,0 +1,14 @@
+node_modules
+dist
+apps/*/dist
+libs/**/dist
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.idea
+.vscode
+.tsbuildinfo
+*.tsbuildinfo
+circular.svg

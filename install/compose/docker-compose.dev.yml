@@ -1,0 +1,143 @@
+# Both services bind HTTP=3000 and gRPC=5000 inside their own
+# containers. HTTP is published to the host on distinct ports
+# (iam → 3050, notify → 3060); gRPC stays unpublished and is
+# reachable only on the compose network (notify → iam:5000).
+#
+# To hit gRPC from the host, either add a `ports:` mapping for the
+# port you need or attach a shell:
+#   docker compose exec iam wget -qO- http://127.0.0.1:3000/users
+#
+# Jaeger UI is published on the host at http://localhost:16686
+# (and reachable on the compose network at http://jaeger:16686).
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686'
+    expose:
+      - '16686' # UI
+      - '4317' # OTLP gRPC
+      - '4318' # OTLP HTTP
+
+  iam:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        SERVICE_NAME: iam
+    image: orbit-iam:dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      ORBIT_ENV: compose
+      # dev image WORKDIR is /repo (full workspace), not /app.
+      DEMO_USERS_PATH: /repo/apps/iam/demousers.json
+      OTEL_ENABLED: '1'
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      # Port overrides — bootstrapService reads <NAME>_HTTP_PORT and
+      # <NAME>_GRPC_PORT to decide its bind ports, and ServiceRegistry
+      # reads the same vars to derive cross-service URLs. So setting
+      # them here propagates to both iam (bind) and notify (resolver).
+      IAM_HTTP_PORT: 3000
+      IAM_GRPC_PORT: 5000
+      # Health probe target — matches IAM_HTTP_PORT.
+      HEALTH_PORT: 3000
+      # Shared bearer token for service-to-service gRPC. ApiKeyGuard
+      # checks `x-internal-token` metadata against this value on every
+      # @InternalOnly handler. Demo-only — replace via .env in real
+      # deployments and load with `docker compose --env-file`.
+      ORBIT_INTERNAL_TOKEN: ${ORBIT_INTERNAL_TOKEN:-dev-internal-token}
+    ports:
+      - '3050:3000' # HTTP on host
+    expose:
+      - '5000'
+    # No compose-level healthcheck: the dev stage's image HEALTHCHECK
+    # (driven by HEALTH_PORT) is the single source of truth.
+    # `docker compose watch` syncs changed files from the host into the
+    # running container. nest --watch inside the container picks them
+    # up and recompiles. No bind-mount: the workspace tree, including
+    # node_modules, lives entirely inside the container.
+    develop:
+      watch:
+        - action: sync
+          path: ../../apps/iam
+          target: /repo/apps/iam
+          ignore:
+            - dist/
+            - node_modules/
+            - '*.tsbuildinfo'
+        - action: sync
+          path: ../../libs
+          target: /repo/libs
+          ignore:
+            - '**/dist/'
+            - '**/node_modules/'
+            - '**/*.tsbuildinfo'
+        # Manifest or Dockerfile changes require a fresh image (new
+        # deps, new build steps) — sync alone wouldn't be enough.
+        - action: rebuild
+          path: ../../package.json
+        - action: rebuild
+          path: ../../pnpm-lock.yaml
+        - action: rebuild
+          path: ../../Dockerfile
+
+  notify:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        SERVICE_NAME: notify
+    image: orbit-notify:dev
+    depends_on:
+      iam:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      ORBIT_ENV: compose
+      IAM_GRPC_TIMEOUT_MS: 5000
+      OTEL_ENABLED: '1'
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+      # notify binds its own HTTP/gRPC on 3000/5000 — separate network
+      # namespace, so no collision with iam's identical ports.
+      NOTIFY_HTTP_PORT: 3000
+      NOTIFY_GRPC_PORT: 5000
+      # ServiceRegistry needs IAM_GRPC_PORT to construct iam:5000.
+      # Without it, the registry falls back to the default 50051.
+      IAM_GRPC_PORT: 5000
+      HEALTH_PORT: 3000
+      # IamClient attaches this as `x-internal-token` metadata on every
+      # outbound gRPC call — must match the value iam sees.
+      ORBIT_INTERNAL_TOKEN: ${ORBIT_INTERNAL_TOKEN:-dev-internal-token}
+    ports:
+      - '3060:3000' # HTTP on host
+    expose:
+      - '5000'
+    develop:
+      watch:
+        - action: sync
+          path: ../../apps/notify
+          target: /repo/apps/notify
+          ignore:
+            - dist/
+            - node_modules/
+            - '*.tsbuildinfo'
+        - action: sync
+          path: ../../libs
+          target: /repo/libs
+          ignore:
+            - '**/dist/'
+            - '**/node_modules/'
+            - '**/*.tsbuildinfo'
+        - action: rebuild
+          path: ../../package.json
+        - action: rebuild
+          path: ../../pnpm-lock.yaml
+        - action: rebuild
+          path: ../../Dockerfile

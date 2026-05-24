@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package notify;
+
+// NotifyService — private gRPC surface for the notify app.
+service NotifyService {
+  rpc SendNotification (SendNotificationRequest) returns (Notification);
+}
+
+enum NotificationChannel {
+  // Proto3 requires a zero value; treated as "unspecified / invalid" by the
+  // server (validation rejects it before reaching the handler).
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  EMAIL = 1;
+  SMS = 2;
+}
+
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  SENT = 2;
+}
+
+message SendNotificationRequest {
+  string userId = 1;
+  NotificationChannel channel = 2;
+  string subject = 3;
+  string body = 4;
+}
+
+message Recipient {
+  string email = 1;
+  string displayName = 2;
+}
+
+message Notification {
+  string id = 1;
+  string userId = 2;
+  NotificationChannel channel = 3;
+  string subject = 4;
+  string body = 5;
+  NotificationStatus status = 6;
+  Recipient recipient = 7;
+  string createdAt = 8;
+}
