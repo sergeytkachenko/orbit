@@ -11,10 +11,25 @@ HTTP ──▶ notify (REST + gRPC) ──gRPC──▶ iam (REST + gRPC)
 
 `POST /notifications` makes `notify` call `iam.IamService.GetUser` over gRPC and embeds the resolved user as `recipient`.
 
-| Mode | iam HTTP | iam gRPC | notify HTTP | notify gRPC | Jaeger UI |
-| --- | --- | --- | --- | --- | --- |
-| `make dev` (compose) | `localhost:3050` | compose-only `iam:5000` | `localhost:3060` | compose-only `notify:5000` | `localhost:16686` |
-| Local dev (no Docker) | `localhost:3001` | `localhost:50051` | `localhost:3002` | `localhost:50052` | — |
+**`make dev` (compose)**
+
+| Endpoint | Address |
+| --- | --- |
+| iam HTTP | `localhost:3050` |
+| iam gRPC | compose-only `iam:5000` |
+| notify HTTP | `localhost:3060` |
+| notify gRPC | compose-only `notify:5000` |
+| Jaeger UI | `localhost:16686` |
+
+**Local dev (no Docker)**
+
+| Endpoint | Address |
+| --- | --- |
+| iam HTTP | `localhost:3001` |
+| iam gRPC | `localhost:50051` |
+| notify HTTP | `localhost:3002` |
+| notify gRPC | `localhost:50052` |
+| Jaeger UI | — |
 
 ---
 
